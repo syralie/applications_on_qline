@@ -1,0 +1,3 @@
+"""
+QToken protocol configuration
+"""
