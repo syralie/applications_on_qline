@@ -1,6 +1,6 @@
-# QToken QLine - Open Source
+# QToken QLine
 
-Implementation Python du protocole d'echange de jetons quantiques QT1.
+Python implementation of the QT1 quantum token exchange protocol.
 
 ## Installation
 
@@ -11,13 +11,13 @@ pip install -e .
 
 ## Tests
 
-### Sans simulation hardware
+### Without hardware simulation
 
 ```bash
 ./scripts/test_protocol_no_hw.sh 2
 ```
 
-### Avec simulation hardware (necessite kiwi_hw_control)
+### With hardware simulation (requires kiwi_hw_control)
 
 ```bash
 ./scripts/test_protocol_w_hw.sh 2
@@ -25,21 +25,21 @@ pip install -e .
 
 ## Structure
 
-- `src/alice/` : Implementation d'Alice
-- `src/bob/` : Implementation de Bob
-- `src/agents/` : Agents distribues
-- `src/utils/` : Utilitaires et readers
-- `scripts/` : Scripts de test
+- `src/alice/` : Alice implementation
+- `src/bob/` : Bob implementation
+- `src/agents/` : Distributed agents
+- `src/utils/` : Utilities and readers
+- `scripts/` : Test scripts
 
 ## Usage
 
-### Mode manuel (valeurs par defaut)
+### Manual mode (default values)
 
 ```bash
 # Terminal 1: Bob
 python run_bob.py --M 2
 
-# Terminal 2: Bob agents (4 pour M=2)
+# Terminal 2: Bob agents (4 for M=2)
 python run_bob_agent.py --M 2 --pid 00
 python run_bob_agent.py --M 2 --pid 01
 python run_bob_agent.py --M 2 --pid 10
@@ -48,30 +48,30 @@ python run_bob_agent.py --M 2 --pid 11
 # Terminal 3: Alice
 python run_alice.py --M 2
 
-# Terminal 4: Alice agents (4 pour M=2)
+# Terminal 4: Alice agents (4 for M=2)
 python run_alice_agent.py --M 2 --pid 00 --al_port 65000
 python run_alice_agent.py --M 2 --pid 01 --al_port 65000
 python run_alice_agent.py --M 2 --pid 10 --al_port 65000
 python run_alice_agent.py --M 2 --pid 11 --al_port 65000
 ```
 
-### Mode simulation hardware
+### Hardware simulation mode
 
 ```bash
-# Lancer la simulation hardware (necessite kiwi_hw_control)
+# Launch hardware simulation (requires kiwi_hw_control)
 ./scripts/launch_simulation.sh
 
-# Lancer le protocole avec simulation
+# Launch protocol with simulation
 ./scripts/test_protocol_w_hw.sh 2 10 0.11
 ```
 
-## Parametres
+## Parameters
 
-- `M` : Nombre de bits pour identifier les agents (2^M agents)
-- `--sim` : Utiliser la simulation hardware
-- `--bit_size` : Taille du token en bits
-- `--gamma-err` : Seuil de taux d'erreur pour la verification
-- `--gamma-det` : Seuil de taux de detection
+- `M` : Number of bits to identify agents (2^M agents)
+- `--sim` : Use hardware simulation
+- `--bit_size` : Token size in bits
+- `--gamma-err` : Error rate threshold for verification
+- `--gamma-det` : Detection rate threshold
 
 ## Reference
 
