@@ -72,12 +72,12 @@ python client_run.py -m real -n 125 -b 32768
 
 There are mainly two things we want to check in the protocol output result:
 - The secret message: The server should receive and show one of the messages in the file m0.txt or m1.txt without error. 
-- The security bound: An index of how close we are to reach the security bound. It is mainly depend on **number of batches * batch size** and **qber**. If passed, we will see **l** with a positive value:
+- The security bound: An index of how close we are to reach the security bound. It is mainly depend on **number of batches * batch size** and **qber**. If passed, we will see **l** with a positive value like the following:
 
 ```
 [extraction] security bound passed!! : l = xxx bits. 
 ```
-Otherwise, we will see **l** with a negative value, meaning this is not a secure run even the .
+Otherwise, we will see **l** with a negative value, meaning this is not a secure run even the message is correctly transfered.
 
 
 # Protocol steps
@@ -133,11 +133,6 @@ There are two versions in the initial phase:
 - To verify the protocol, **X0b** should be equal to **Xx** if **b** = 0, otherwise equal to **Xy**. 
 
 
-# Figure of merit
-
-- How many bits to be transfered per unit time. (bit/s)
-- The error rate of transfered bits before error correction. (%)
-- How many qubits needed in average to transfer a bit. (/bit)
 
 # Reference
 
