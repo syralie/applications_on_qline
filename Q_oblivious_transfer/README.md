@@ -3,46 +3,53 @@
 This is an implementation of oblivious transfer protocol based on Qline.
 
 Qline: 
+In each attenption of forming key pairs on one qubit, we apply operations: 
+
+Assuming orininal qubit with state 
+
+$|q\rangle$
+
+We apply:
+
+$X^{x_n} H^{theta_n} |q\rangle$ 
+
+on each party.
 
 ```mermaid
 graph LR
-    A["Alice (x0,theta0)"]
-    B["Charlie1 (x1,theta1)"]
-    C["Charlie2 (x2,theta2)"]
-    D["Bob (x3,theta3)"]
+    A["Alice(Client) (x1,theta1)"]
+    B["Bob(Server) (x2,theta2)"]
     A --> B
-    B --> C
-    C --> D
 ```
 
 # How to use
 
 ## with hwsim
 
-- Clone and build [hw_sim](https://github.com/Veriqloud/hw_sim)
+- Clone and build [hw_sim](https://github.com/Veriqloud/hw_sim), obtain the executable **sim**.
 
-- Clone and build [gc](https://github.com/Veriqloud/kiwi_hw_control)
+- Clone and build [gc](https://github.com/Veriqloud/kiwi_hw_control), obtain the executable **gc_alice** and **gc_bob**. 
 
-- Make config files by [kiwi_hw_control/deployment/](https://github.com/Veriqloud/kiwi_hw_control)
+- Generate config files by [kiwi_hw_control/config/gen_cinfig](https://github.com/Veriqloud/kiwi_hw_control)
 
 - Run hardware simulations and gc program in 4 different terminals in sequence via the generated config files.
 
-For example, arrange the config files in *kiwi_hw_control/config/sim*, then run:
+For example, arrange the config files in *kiwi_hw_control/config/sim*, then run the executables generated above in 4 terminals:
 ```
-simulator -c bob/sim.json
-simulator -c alice/sim.json
+sim -c bob/sim.json
+sim -c alice/sim.json
 gc_bob -c bob/gc.json
 gc_alice -c alice/gc.json
 ```
 
-- Run the protocol programe on 2 terminals:
+- Run the protocol programe on another 2 terminals:
 
-Assuming senarios in hwsim mode, number of batches = 1000, batch size = 16, secret choice 0, one round.
+Assuming senarios in hwsim mode, number of batches = 125, batch size = 32768, secret randomly choosen, one round.
 
 In Oblivious_Transfer_Qline$
 ```
-python server_run.py -m hwsim -n 1000 -b 16 -r 2
-python client_run.py -m hwsim -n 1000 -b 16 -r 2
+python server_run.py -m hwsim -n 125 -b 32768
+python client_run.py -m hwsim -n 125 -b 32768
 ```
 For security reasons, the protocol will abort if **number of batches * batch size < 4096**. 
 
@@ -52,24 +59,34 @@ For security reasons, the protocol will abort if **number of batches * batch siz
 - Run the following on Bob:
 
 ```
-python server_run.py -m real -n 1000 -b 16 -s 0
+python server_run.py -m real -n 125 -b 32768
 ```
 
 - Run the following on Alice:
 
 ```
-python client_run.py -m real -n 1000 -b 16
+python client_run.py -m real -n 125 -b 32768
 ```
 
+## result guild
+
+There are mainly two things we want to check in the protocol output result:
+- The secret message: The server should receive and show one of the messages in the file m0.txt or m1.txt without error. 
+- The security bound: An index of how close we are to reach the security bound. It is mainly depend on **number of batches * batch size** and **qber**. If passed, we will see **l** with a positive value:
+
+```
+[extraction] security bound passed!! : l = xxx bits. 
+```
+Otherwise, we will see **l** with a negative value, meaning this is not a secure run even the .
 
 
 # Protocol steps
 
-Consider party A runs the protocol to party B. Meaning A has the data to be transmitted to B.
+Consider party A runs the OT protocol to party B. Meaning A has the data to be transmitted to B.
 
 ## Initial phase
 
-Input A: m0, m1  (send one of the message)
+Input A: m0/m1  (send one of the message)
 Input B: b (decide which message to decode)
 
 There are two versions in the initial phase: 
@@ -132,7 +149,7 @@ There are two versions in the initial phase:
 
 # License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [GPL-3.0](LICENSE).
 
 ## Third-party dependencies
 
@@ -146,4 +163,4 @@ You must comply with the license terms of these dependencies when redistributing
 
 # Contributions
 
-By contributing to this project, you agree that your contributions will be licensed under the MIT License.
+By contributing to this project, you agree that your contributions will be licensed under the GPL-3.0 License.
