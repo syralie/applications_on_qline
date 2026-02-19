@@ -73,6 +73,17 @@ python run_alice_agent.py --M 2 --pid 11 --al_port 65000
 - `--gamma-err` : Error rate threshold for verification
 - `--gamma-det` : Detection rate threshold
 
+## Dependencies
+
+This project uses only the Python standard library (asyncio, json, logging, argparse, etc.). No third-party packages are required at runtime.
+
+Development tools (optional):
+- [pytest](https://docs.pytest.org/) (MIT License)
+- [black](https://black.readthedocs.io/) (MIT License)
+- [pylint](https://pylint.readthedocs.io/) (GPL-2.0 License)
+- [flake8](https://flake8.pycqa.org/) (MIT License)
+- [mypy](https://mypy-lang.org/) (MIT License)
+
 ## Reference
 
 Kent et al. 2022, "Practical quantum tokens without quantum memories"
