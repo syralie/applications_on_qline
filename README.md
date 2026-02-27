@@ -69,10 +69,16 @@ gc_alice -c alice/GC.json
 
 # License
 
-This project is licensed under the [GPL-3.0](LICENSE).
+This repository contains multiple subprojects distributed under different licenses:
 
+- `Q_oblivious_transfer/` is licensed under the GNU General Public License v3.0 (GPL-3.0).
+- `Qtoken_Qline/` is licensed under the GNU General Public License v2.0 (GPL-2.0).
+
+Please refer to the `LICENSE` file in each subdirectory for the full license text and terms.
 
 
 # Contributions
 
-By contributing to this project, you agree that your contributions will be licensed under the GPL-3.0 License.
+By contributing to this repository, you agree that your contributions will be licensed under the license applicable to the corresponding subproject.
+
+If you add a new protocol or subproject, please update the License section above to clearly specify its associated license.
