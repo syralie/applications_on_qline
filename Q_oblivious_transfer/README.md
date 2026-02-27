@@ -42,9 +42,9 @@ gc_bob -c bob/gc.json
 gc_alice -c alice/gc.json
 ```
 
-- Run the protocol programe on another 2 terminals:
+- Run the protocol program on another 2 terminals:
 
-Assuming senarios in hwsim mode, number of batches = 125, batch size = 32768, secret randomly choosen, one round.
+Assuming scenarios in hwsim mode, number of batches = 125, batch size = 32768, secret randomly chosen, one round.
 
 In Oblivious_Transfer_Qline$
 ```
@@ -68,7 +68,7 @@ python server_run.py -m real -n 125 -b 32768
 python client_run.py -m real -n 125 -b 32768
 ```
 
-## result guild
+## result guide
 
 There are mainly two things we want to check in the protocol output result:
 - The secret message: The server should receive and show one of the messages in the file m0.txt or m1.txt without error. 
@@ -77,7 +77,7 @@ There are mainly two things we want to check in the protocol output result:
 ```
 [extraction] security bound passed!! : l = xxx bits. 
 ```
-Otherwise, we will see **l** with a negative value, meaning this is not a secure run even the message is correctly transfered.
+Otherwise, we will see **l** with a negative value, meaning this is not a secure run even the message is correctly transferred.
 
 
 # Protocol steps
@@ -101,7 +101,7 @@ There are two versions in the initial phase:
 ------
 - A randomly choose her list of **x1**, **theta1**.
 - A applies the list of **x1** and **theta1** on a list of qubits and sends them to B.
-- B receives the qubits and measures them with randomly choosen **theta2**. Got result **x2**.
+- B receives the qubits and measures them with randomly chosen **theta2**. Got result **x2**.
 
 
 ### real hardware version
