@@ -84,6 +84,12 @@ Development tools (optional):
 - [flake8](https://flake8.pycqa.org/) (MIT License)
 - [mypy](https://mypy-lang.org/) (MIT License)
 
+
+## License
+
+This project is licensed under the [GPL-2.0](LICENSE).
+
+
 ## Reference
 
 Kent et al. 2022, "Practical quantum tokens without quantum memories"
