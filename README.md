@@ -42,9 +42,9 @@ By decoupling data generation from application consumption, this design enables 
 
 - Clone and build [hw_sim](https://github.com/Veriqloud/hw_sim), obtain the executable **sim**.
 
-- Clone and build [GC](https://github.com/Veriqloud/kiwi_hw_control/gc), obtain the executable **gc_alice** and **gc_bob**. 
+- Clone and build [GC](https://github.com/Veriqloud/kiwi_hw_control/tree/master/gc), obtain the executable **gc_alice** and **gc_bob**. 
 
-- Generate config files by [kiwi_hw_control/config/gen_config](https://github.com/Veriqloud/kiwi_hw_control/config/gen_config)
+- Generate config files by [kiwi_hw_control/config/gen_config](https://github.com/Veriqloud/kiwi_hw_control//tree/master/config/gen_config)
 
 - Run the hardware simulations and GC programs sequentially in the following order:
 *sim_bob → sim_alice → gc_bob → gc_alice*, using the corresponding configuration files with argument *-c*. For debugging purposes, we recommend running each command in a separate terminal.
