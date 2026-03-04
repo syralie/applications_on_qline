@@ -2,12 +2,6 @@
 
 Python implementation of the QT1 quantum token exchange protocol.
 
-## Installation
-
-```bash
-pip install -r requirements.txt
-pip install -e .
-```
 
 ## Tests
 
@@ -77,17 +71,11 @@ python run_alice_agent.py --M 2 --pid 11 --al_port 65000
 
 This project uses only the Python standard library (asyncio, json, logging, argparse, etc.). No third-party packages are required at runtime.
 
-Development tools (optional):
-- [pytest](https://docs.pytest.org/) (MIT License)
-- [black](https://black.readthedocs.io/) (MIT License)
-- [pylint](https://pylint.readthedocs.io/) (GPL-2.0 License)
-- [flake8](https://flake8.pycqa.org/) (MIT License)
-- [mypy](https://mypy-lang.org/) (MIT License)
 
 
 ## License
 
-This project is licensed under the [GPL-2.0](LICENSE).
+This project is licensed under the [MIT](LICENSE).
 
 
 ## Reference
