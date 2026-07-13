@@ -19,6 +19,8 @@ from datetime import timedelta, datetime
 import queue
 from threading import Lock
 import csv
+import galois
+from pylfsr import LFSR
 
 # security (trusted intervalle) for sampling error on the qber
 # EPS_SEC1=2**(-35)
@@ -27,7 +29,70 @@ EPS_SEC1 = 2**(-23)
 # EPS_SEC2=2**(-35)
 EPS_SEC2 = 2**(-23)
 EPS_COR=2**(-24)
-      
+
+
+def irreducible_polynomial(bH):
+    GF = galois.GF(2)
+
+    while True:
+        coeffs = [1] + [random.randint(0, 1) for _ in range(bH)]
+        p = galois.Poly(coeffs, field=GF)
+
+        if p.is_irreducible():
+            
+            exps = [bH]
+            for i, c in enumerate(coeffs[1:-1], start=1):   # x^(bH-1) down to x^1
+                if c == 1:
+                    exps.append(bH - i)
+            return coeffs  
+    
+def Toeplitz(coeffs, state, bH, bM):
+
+    # coeffs = [1, c_{bH-1}, ..., c_1, c_0], degree bH, monic, c_0 must be 1
+    # pylfsr fpoly wants exponents with a 1-coefficient, EXCLUDING the
+    # implicit constant term (x^0), and INCLUDING the top degree bH.
+    exps = [bH]
+    for i, c in enumerate(coeffs[1:-1], start=1):   # x^(bH-1) down to x^1
+        if c == 1:
+            exps.append(bH - i) # e.g. [10, 8, 3] instead of a raw bitmask
+    lfsr = LFSR(exps, state)
+
+    columns = []
+
+    for _ in range(bM):
+        columns.append(lfsr.state)
+        lfsr.next()
+    T = np.column_stack(columns)
+
+    return T
+
+def sign(key, bH, message):
+    key1 = key[:bH]
+    key2 = key[bH:]
+    coeffs = irreducible_polynomial(bH)
+    print(coeffs)
+    T = Toeplitz(coeffs, key1, bH, len(message))
+    hashed = np.concatenate((T @ message % 2, coeffs[1:]))
+    signed = hashed ^ key2
+    return signed
+
+def verify(key, bH, message, signature):
+    key1 = key[:bH]
+    key2 = key[bH:]
+    hashed = signature ^ key2
+    coeffs = np.append([1], hashed[bH:])
+    hashed = hashed[:bH]
+    T = Toeplitz(coeffs, key1, bH, len(message))
+    test = T @ message % 2
+    if all(test[i] == hashed[i] for i in range(bH)):
+        return True
+    else:
+        return False
+
+
+    
+
+
 
 def start_time():
     return time.time()

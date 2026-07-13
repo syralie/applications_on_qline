@@ -41,6 +41,24 @@ class QDSHandler:
         c = one_time_pad(self.key, ) # write these functions in utils.py
         blocks = split_string(c, self.n)
 
+class QDSHandlerBob:
+    def __init__(self):
+        self.n = None
+        self.bH = None
+        self.key = None
+        self.Charlie_half = []
+        self.Charlie_indices = []
+
+    def exchange_keys(self, n, bH, key):
+        return
+    def sign_message(self):
+        return
+    def verify(self):
+        return
+    
+
+
+
 
 
 class QDSHandlerBob:
