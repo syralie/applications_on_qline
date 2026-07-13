@@ -43,10 +43,10 @@ class QDSHandlerAlice():
 
     
     
-    def sign(self): #, host, port):
+    async def sign(self, host, port):
         # sign doc and send to Bob
-        #reader, writer = await asyncio.open_connection(host, port)
-        #logging.info(f"[C] Connected to {host}:{port}")
+        reader, writer = await asyncio.open_connection(host, port)
+        logging.info(f"[C] Connected to {host}:{port}")
 
         
 
@@ -56,9 +56,14 @@ class QDSHandlerAlice():
             signature = sign(key, self.bH,self.message)
             #print(verify(key, self.bH,self.message, signature))
             signatures.append(signature)
-        print(signatures)
-        #await assend(writer, {"type": "SIGNATURE", "signatures": signatures})
-        #response = await asrecv(reader)
+        
+
+        await assend(writer, {"type": "SIGNATURES", "message": self.message, "signatures": signatures})
+        response = await asrecv(reader)
+        print(response)
+        writer.close()
+        await writer.wait_closed()
+        
 
         #writer.close()
        # await writer.wait_closed()
@@ -72,10 +77,13 @@ class QDSHandlerAlice():
         Bob_port = "1700"
 
         ### QKD with Charlie ###
-        self.QKD("Charlie", Charlie_host, Charlie_port)
+        await self.QKD("Charlie", Charlie_host, Charlie_port)
         
         ### QKD with Bob ###
-        self.QKD("Bob", Bob_host, Bob_port)
+        await self.QKD("Bob", Bob_host, Bob_port)
+
+        ### Sign message and send to Bob ###
+        await self.sign(Bob_host, Bob_port)
     
     
 
@@ -103,14 +111,15 @@ if __name__ == "__main__":
     #                    help="Quantum bit error rate (default: 0.055)")
     parser.add_argument("-l", "--loglive", action="store_true",
                         help="show log in live")
-
+    
     args = parser.parse_args()
+    '''
     alice = QDSHandlerAlice(args)
     alice.Bob_key = [0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
     alice.Charlie_key = [0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
     print(alice.sign())
-
     '''
+    
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_filename = f"sim_alice_{timestamp}.log"
@@ -124,5 +133,5 @@ if __name__ == "__main__":
     )
     alice = QDSHandlerAlice(args)
     asyncio.run(alice.run())
-    '''
+    
     

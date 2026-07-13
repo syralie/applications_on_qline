@@ -4,6 +4,8 @@ from qkd import QKDHandlerBob
 import random
 from datetime import datetime
 import logging
+import numpy as np
+from utils import verify
 
 all_connections_done = asyncio.Event()
 
@@ -16,12 +18,21 @@ class QDSHandlerCharlie:
         self.key = None
         self.Bob_half = []
         self.Bob_indices = []
+        self.eMax = 0.0
 
     
-    def sign_message(self):
-        return
-    def verify(self):
-        return
+    def handle_verification(self, request):
+        self.Alice_message = request["message"]
+        self.Alice_signatures = request["signatures"]
+        relevant_signatures = np.concatenate(([self.Alice_signatures[i] for i in np.array(self.Bob_indices)], self.Alice_signatures[self.n:]))
+        key = np.concatenate((self.Bob_half, [self.key[i * (3 * self.bH): (i+1) * (3 * self.bH)] for i in range(self.n)]))
+        errors = 0
+        for i in range(3 * self.n // 2):
+            if verify(key[i], self.bH, self.Alice_message, relevant_signatures[i]) is False:
+                errors += 1
+
+        return errors
+
 
     async def dispatcher(self, reader, writer):
         request = await asrecv(reader)
@@ -37,31 +48,35 @@ class QDSHandlerCharlie:
         elif request["type"] == "KEY_TRANSFER":
             # await handle_key_transfer(reader, writer, request)
 
-            Bob_half = request["Bob_half"]
-            Bob_indices = request["Bob_indices"]
+            self.Bob_half = request["Bob_half"]
+            self.Bob_indices = request["Bob_indices"]
             
-            n = request["n"]
-            bH = request["bH"]
+            self.n = request["n"]
+            self.bH = request["bH"]
 
-            indices = list(range(n))
+            indices = list(range(self.n))
             random.shuffle(indices)
             print(indices)
-            print(bH)
-            Charlie_half = [self.key[i * (3 * bH): (i+1) * (3 * bH)] for i in indices[:n//2]]
+            print(self.bH)
+            Charlie_half = [self.key[i * (3 * self.bH): (i+1) * (3 * self.bH)] for i in indices[:self.n//2]]
             print("test", Charlie_half)
-            await assend(writer, {"Charlie_indices": indices[:n//2], "Charlie_half": Charlie_half})
+            await assend(writer, {"Charlie_indices": indices[:self.n//2], "Charlie_half": Charlie_half})
 
             writer.close()
             await writer.wait_closed()
-            print("Charlie_Bob", Bob_half)
+            print("Charlie_Bob", self.Bob_half)
             
 
+        elif request["type"] == "SIGNATURES":
+            errors = self.handle_verification(request)
+            if errors > self.eMax:
+                await assend(writer, "Verification Failed.")
+                print("failed")
+            else:
+                await assend(writer, "Verification Successful.")
 
-        elif request["type"] == "SIGN":
-            await handle_signature(reader, writer, request)
-
-        elif request["type"] == "VERIFY":
-            await handle_verification(reader, writer, request)
+            writer.close()
+            await writer.wait_closed()
 
  
 
