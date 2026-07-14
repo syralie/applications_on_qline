@@ -35,18 +35,15 @@ class QKDHandlerBob:
         self.num_qubits = num_qubits
         #self.qber = qber
         self.path_config = path_config
-        #self.socket_reader = socket_reader
-        #self.socket_writer = socket_writer
         self.csvpath = csvpath
 
     async def run_protocol(self):
-        #num_bits = self.num_batches * self.batch_size *2
-        #lambda_ot = num_bits // 2
 
-        logging.debug(f"[handler] mode: {self.mode}")
+        logging.info(f"[QKD] mode: {self.mode}")
 
-        logging.info("[S] Q-RECEIVE")
+        logging.info("Reading Qubit Information.")
         
+        '''
         if self.mode == "test":
             logging.debug(f"[S] server start in test mode")
             with open('bob_angles.json', 'r') as f:
@@ -60,8 +57,9 @@ class QKDHandlerBob:
             theta2,xlist = parse_angle(raw_ang, 'B')
             x2 = xflip(interRes, xlist)
             time_to_receive = 0
+        '''
 
-        elif self.mode == "hwsim" or self.mode == "real":
+        if self.mode == "hwsim" or self.mode == "real":
             logging.debug(f"[S] server start in {self.mode} mode")
             time0=start_time()
             tmptheta, tmpRes = reader_bob(mode=self.mode, num_qubits=self.num_qubits,  path_config=self.path_config)
@@ -71,7 +69,7 @@ class QKDHandlerBob:
             if len(tmptheta) == 0:
                 return
             
-
+            logging.info("Processing Qubit Information.")
             time1=start_time()
             interRes = array_flaten(tmpRes)
             theta2, xlist = parse_angle(tmptheta, 'B')
@@ -80,17 +78,20 @@ class QKDHandlerBob:
             x2 = xflip(interRes, xlist)
             del tmptheta
             del tmpRes
-
-        else:
+        
+        
+        '''
+        if self.mode not in ["hwsim", "real", "test"]:
             logging.error(f"[S] Unknown mode: {self.mode}")
             return
+        '''
 
 
 
-        logging.info("[S] BASIS RECONCILIATION")
+        logging.info("Starting Basis Reconciliation.")
 
         # Receive remained theta1 for calculating I0, I1
-        logging.info(f"[S] waiting for theta from Alice to continue...if not aborted")
+        logging.info(f"Waiting for theta from Alice to continue.")
 
         try:
             length_bytes = await asyncio.wait_for(self.reader.readexactly(4), timeout=2000)
@@ -104,10 +105,10 @@ class QKDHandlerBob:
             # If EOF/zero-bytes read happened, report more state
             eof = self.reader.at_eof()
             writer_closed = getattr(self.writer, "is_closing", lambda: False)()
-            logging.error(f"[S] Error while waiting for theta from Bob: {e}. reader.at_eof={eof}, writer.is_closing={writer_closed}. Maybe the client aborted.")
+            logging.error(f"Error while waiting for theta from Alice: {e}. reader.at_eof={eof}, writer.is_closing={writer_closed}. Maybe the client aborted.")
             return
 
-
+        logging.info(f"Theta from Alice received")
         #logging.debug(f"[S] self.num_qubits = {self.num_qubits}")
         #num_bits = self.num_batches * self.batch_size *2
         logging.debug(f"[S] N = {self.num_qubits}")
@@ -116,22 +117,23 @@ class QKDHandlerBob:
         logging.debug(f"[S] len(theta2) = {len(theta2)}")
         logging.debug(f"[S] len(x2) = {len(x2)}")
 
-        logging.debug(f"[S] reconcile basis")
+        logging.info(f"Reconciling basis.")
 
         I = [i for i in range(self.num_qubits) if theta1[i] == theta2[i]]
 
         logging.debug(f"[S] Indices I : {I[:10]}")
 
 
-        logging.debug("[S] send basis to Alice")
+        logging.info("Sending basis to Alice.")
         # send I0, I1 to B
-        await assend(self.writer,I)
+        await assend(self.writer, I)
 
         key = [x2[i] for i in I]
         logging.debug(f"[S] X: {key[:10]}, length:{len(key)}")
         del x2
 
         #logging.info("[S] ERROR CORRECTION")
+        logging.info(f"Computed key: {key[:10]}")
         return key
 
 
@@ -152,12 +154,14 @@ class QKDHandlerAlice:
         #num_bits = self.num_batches * self.batch_size *2
         #lambda_ot = num_bits // 2
 
-        logging.debug(f"[handler] mode: {self.mode}")
+        logging.info(f"[QKD] mode: {self.mode}")
+        logging.info("Reading Qubit Information.")
         
         #logging.debug(f"[C] client starts")
-        logging.info("[C] Q-RECEIVE")
+        # logging.info("[C] Q-RECEIVE")
         time0=start_time()
         time_to_receive = 0
+        '''
         if self.mode == "test":
             logging.debug(f"[C] client starts in test mode")
             with open('alice_angles.json', 'r') as f:
@@ -168,24 +172,26 @@ class QKDHandlerAlice:
             logging.debug(f"[C] raw_ang: {raw_ang[:10]}")
 
             theta1, x1 = parse_angle(dataA['angles_A'], 'A')
-
-        elif self.mode == "hwsim" or self.mode == "real":
+        '''
+        if self.mode == "hwsim" or self.mode == "real":
             logging.debug(f"[C] client starts in {self.mode} mode")
             logging.debug(f"[C] reading angles:")
 
+            
             tmptheta = reader_alice(mode=self.mode,num_qubits=self.num_qubits, path_config=self.path_config)
             time_to_receive=delta_time(time0)
 
             await send_stop_command(self.mode, self.path_config, self.socket_reader, self.socket_writer)
             if len(tmptheta) == 0:
                 return
+            logging.info("Processing Qubit Information.")
             theta1, x1 = parse_angle(tmptheta, 'A')
             del tmptheta
-            
-        else:
+        '''  
+        if self.mode not in ["hwsim", "real", "test"]:
             logging.error(f"[C] Unknown mode: {self.mode}")
             return
-
+        '''
         logging.debug(f"[C] x1: {x1[:10]}, length: {len(x1)}")
         logging.debug(f"[C] theta1: {theta1[:10]}, length: {len(theta1)}")
         logging.info(f"[S] len x_alice: {len(x1)}, theta_alice: {len(theta1)}") 
@@ -195,9 +201,10 @@ class QKDHandlerAlice:
         #    raise ValueError("[C] L can't be larger than the total number of unique indices (n + 1).")
         
         # send remained theta1
-        logging.info("[C] BASIS RECONCILIATION")
+        # logging.info("[C] BASIS RECONCILIATION")
+        logging.info("Starting Basis Reconciliation.")
         
-        logging.debug("[C] sending remaining theta1 and verify_index to Bob")
+        logging.info("Sending Alice's chosen bases to Bob")
         await assend(self.writer,theta1)
         
         del theta1
@@ -205,15 +212,16 @@ class QKDHandlerAlice:
 
         # receive I0,I1
         logging.debug(f"[C] receiving I")
+        logging.info("Receiving indices from Bob")
         I = await asrecv(self.reader)
         logging.debug(f"[C] Indices Ib : {I[:10]}")
 
-        # At this point,client should not know which I is the matched one
 
         key = [x1[i] for i in I]
         logging.debug(f"[C] X: {key[:10]},length:{len(key)}")
         del x1
 
+        logging.info(f"Computed key: {key[:10]}")
         return key
 
         

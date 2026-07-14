@@ -14,10 +14,12 @@ path_config = "config_test/sim/bob/ot.json"
 
 
 class QDSHandlerBob():
-    def __init__(self):
+    def __init__(self, Charlie_host, Charlie_port):
         self.n = 10
         self.bH = 10
         self.key = ''
+        self.Charlie_host = Charlie_host
+        self.Charlie_port = Charlie_port
         self.Charlie_half = []
         self.Charlie_indices = []
         self.Alice_signatures = []
@@ -37,10 +39,8 @@ class QDSHandlerBob():
         
     
     async def handle_key_transfer(self, request):
-        Charlie_host = "localhost"
-        Charlie_port = "7100"
-        reader, writer = await asyncio.open_connection(Charlie_host, Charlie_port)
-        logging.info(f"[C] Connected to {Charlie_host}:{Charlie_port}")
+        reader, writer = await asyncio.open_connection(self.Charlie_host, self.Charlie_port)
+        logging.info(f"[C] Connected to {self.Charlie_host}:{self.Charlie_port}")
 
         indices = list(range(self.n))
         random.shuffle(indices)
@@ -62,21 +62,25 @@ class QDSHandlerBob():
     def handle_verification(self, request):
         self.Alice_message = request["message"]
         self.Alice_signatures = request["signatures"]
+        logging.info("Processing relevant keys and signatures.")
         relevant_signatures = np.concatenate((self.Alice_signatures[:self.n], [self.Alice_signatures[i] for i in np.array(self.Charlie_indices) + self.n]))
         key = np.concatenate(([self.key[i * (3 * self.bH): (i+1) * (3 * self.bH)] for i in range(self.n)], self.Charlie_half))
         # errors = 0
+        logging.info("Beginning Verification.")
         for i in range(3 * self.n // 2):
             if verify(key[i], self.bH, self.Alice_message, relevant_signatures[i]) is False:
                 #errors += 1
+                logging("Error Detected during Verification. Protocol Aborted.")
                 return False
 
         #return errors
+        logging.info("Verification completed without errors detected.")
+        return True
 
     async def handle_forwarding(self, request):
-        Charlie_host = "localhost"
-        Charlie_port = "7100"
-        reader, writer = await asyncio.open_connection(Charlie_host, Charlie_port)
-        logging.info(f"[C] Connected to {Charlie_host}:{Charlie_port}")
+        
+        reader, writer = await asyncio.open_connection(self.Charlie_host, self.Charlie_port)
+        logging.info(f"[C] Connected to {self.Charlie_host}:{self.Charlie_port}")
 
         await assend(writer, request)
         response = await asrecv(reader)
@@ -91,21 +95,28 @@ class QDSHandlerBob():
         request = await asrecv(reader)
 
         if request["type"] == "QKD":
+            logging.info("--- QKD with Alice ---")
             await self.handle_QKD(reader, writer, request)
+            logging.info("--- Key Exchange with Charlie. ---")
             await self.handle_key_transfer(request) 
         
         elif request["type"] == "SIGNATURES":
+            logging.info("--- Signatures received from Alice. Beginning verification. ---")
             verification = self.handle_verification(request)
             if verification == False:
+                logging.info("--- Verification Failed. Transmitting response to Alice. ---")
                 await assend(writer, "Verification Failed.")
-                print("failed")
+                # print("failed")
                 writer.close()
                 await writer.wait_closed()
             else:
+                logging.info("--- Verification Successful. Transmitting response to Alice. ---")
                 await assend(writer, "Verification Successful, forwarding message to Charlie")
                 writer.close()
                 await writer.wait_closed()
+                logging.info("--- Forwarding Signatures to Charlie. Awaiting Response ---")
                 response = await self.handle_forwarding(request)
+                logging.info(f"Response: {response}")
                 print(response)
             
 
@@ -117,10 +128,17 @@ class QDSHandlerBob():
 async def main():
 
     # TODO: edit
+    Charlie_host = "localhost"
+    Charlie_port = "7100"
     host = "localhost"
     port = "1700"
 
-    bob = QDSHandlerBob()
+    logging.info(f"Charlie's ip adress: {Charlie_host}")
+    logging.info(f"Charlie's port: {Charlie_port}")
+    logging.info(f"Bob's ip adress: {host}")
+    logging.info(f"Bob's port: {port}")
+
+    bob = QDSHandlerBob(Charlie_host, Charlie_port)
 
     server = await asyncio.start_server(
         bob.dispatcher,
@@ -140,8 +158,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=log_filename,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        #level=logging.INFO, 
-        level=logging.DEBUG, 
+        level=logging.INFO, 
+        #level=logging.DEBUG, 
         force=True
     )
     asyncio.run(main())

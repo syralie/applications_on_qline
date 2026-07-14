@@ -38,6 +38,7 @@ class QDSHandlerCharlie:
         request = await asrecv(reader)
 
         if request["type"] == "QKD":
+            logging.info("--- QKD with Alice ---")
             QKD_Charlie = QKDHandlerBob(reader, writer, path_config=path_config, mode="hwsim", num_qubits=request["num_qubits"])
             self.key = await QKD_Charlie.run_protocol()
             print("Charlie_key", self.key)
@@ -47,6 +48,8 @@ class QDSHandlerCharlie:
 
         elif request["type"] == "KEY_TRANSFER":
             # await handle_key_transfer(reader, writer, request)
+
+            logging.info("--- Key Exchange with Bob. ---")
 
             self.Bob_half = request["Bob_half"]
             self.Bob_indices = request["Bob_indices"]
@@ -68,12 +71,15 @@ class QDSHandlerCharlie:
             
 
         elif request["type"] == "SIGNATURES":
+            logging.info("--- Signatures received from Bob. Beginning verification. ---")
             errors = self.handle_verification(request)
             if errors > self.eMax:
                 await assend(writer, "Verification Failed.")
-                print("failed")
+                logging.info("--- Verification Failed. Response sent to Bob. ---")
+                #print("failed")
             else:
                 await assend(writer, "Verification Successful.")
+                logging.info("--- Verification Successful. Response sent to Bob. ---")
 
             writer.close()
             await writer.wait_closed()
@@ -104,8 +110,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=log_filename,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        #level=logging.INFO, 
-        level=logging.DEBUG, 
+        level=logging.INFO, 
+        #level=logging.DEBUG, 
         force=True
     )
     asyncio.run(main())
