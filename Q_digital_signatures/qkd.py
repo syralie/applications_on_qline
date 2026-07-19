@@ -76,6 +76,7 @@ class QKDHandlerBob:
             time_to_parse = delta_time(time1)
             logging.info(f"time to parse: {time_to_parse} s")
             x2 = xflip(interRes, xlist)
+            print(x2)
             del tmptheta
             del tmpRes
         
@@ -132,6 +133,19 @@ class QKDHandlerBob:
         logging.debug(f"[S] X: {key[:10]}, length:{len(key)}")
         del x2
 
+        logging.info("Measuring QBER")
+        response = await asrecv(self.reader)
+        verification_ks_Bob = [key[i] for i in response['indices']]
+        length = len(verification_ks_Bob)
+        error = 0
+        for a, b in zip(verification_ks_Bob, response['verification_ks_Alice']):
+            if a != b:
+                error += 1
+        await assend(self.writer, error/length)
+
+
+
+
         #logging.info("[S] ERROR CORRECTION")
         logging.info(f"Computed key: {key[:10]}")
         return key
@@ -186,6 +200,7 @@ class QKDHandlerAlice:
                 return
             logging.info("Processing Qubit Information.")
             theta1, x1 = parse_angle(tmptheta, 'A')
+            print(x1)
             del tmptheta
         '''  
         if self.mode not in ["hwsim", "real", "test"]:
@@ -211,7 +226,7 @@ class QKDHandlerAlice:
         #del data
 
         # receive I0,I1
-        logging.debug(f"[C] receiving I")
+        # logging.debug(f"[C] receiving I")
         logging.info("Receiving indices from Bob")
         I = await asrecv(self.reader)
         logging.debug(f"[C] Indices Ib : {I[:10]}")
@@ -220,6 +235,24 @@ class QKDHandlerAlice:
         key = [x1[i] for i in I]
         logging.debug(f"[C] X: {key[:10]},length:{len(key)}")
         del x1
+
+
+        logging.info("Measuring QBER")
+        length = len(I)
+        verify_index = list(range(0, length))  # Create a list of numbers from 0 to num_bits
+        random.shuffle(verify_index)  # Shuffle the list
+
+        mid = length // 2
+        rest_index, verify_index = verify_index[:mid], verify_index[mid:]  # Split the list into two halves
+
+        rest_index.sort()  # Sort the indices for better readability
+        verify_index.sort()
+        verification_ks = [key[i] for i in verify_index]
+        await assend(self.writer, {'indices': verify_index, 'verification_ks_Alice': verification_ks})
+        # Note to self: both Alice and Bob don't want to lie here, whether they are honest or not
+        # both want their shared key to be as accurate as possible (if not will not pass later QDS checks)
+        qber = await asrecv(self.reader)
+        print(qber)
 
         logging.info(f"Computed key: {key[:10]}")
         return key

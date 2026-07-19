@@ -70,7 +70,7 @@ def sign(key, bH, message):
     key1 = key[:bH]
     key2 = key[bH:]
     coeffs = irreducible_polynomial(bH)
-    print(coeffs)
+    # print(coeffs)
     T = Toeplitz(coeffs, key1, bH, len(message))
     hashed = np.concatenate((T @ message % 2, coeffs[1:]))
     signed = hashed ^ key2

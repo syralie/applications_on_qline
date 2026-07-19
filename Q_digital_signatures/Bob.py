@@ -70,7 +70,7 @@ class QDSHandlerBob():
         for i in range(3 * self.n // 2):
             if verify(key[i], self.bH, self.Alice_message, relevant_signatures[i]) is False:
                 #errors += 1
-                logging("Error Detected during Verification. Protocol Aborted.")
+                logging.info("Error Detected during Verification. Protocol Aborted.")
                 return False
 
         #return errors
