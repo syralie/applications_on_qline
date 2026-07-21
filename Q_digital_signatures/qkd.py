@@ -27,13 +27,13 @@ from applications_on_qline.Q_oblivious_transfer.async_communication import assen
 #logging.basicConfig(level=logging.DEBUG)
 
 class QKDHandlerBob:
-    def __init__(self, reader, writer, path_config, mode = "hwsim", num_qubits=100, csvpath=None):
+    def __init__(self, reader, writer, path_config, mode = "hwsim", num_qubits=100, qber = 0.08, csvpath=None):
 
         self.reader = reader
         self.writer = writer
         self.mode = mode
         self.num_qubits = num_qubits
-        #self.qber = qber
+        self.qber = qber
         self.path_config = path_config
         self.csvpath = csvpath
 
@@ -76,10 +76,11 @@ class QKDHandlerBob:
             time_to_parse = delta_time(time1)
             logging.info(f"time to parse: {time_to_parse} s")
             x2 = xflip(interRes, xlist)
-            print(x2)
+            # print(x2)
             del tmptheta
             del tmpRes
         
+        logging.info(f"[S] len x_alice: {len(x2)}, theta_alice: {len(theta2)}") 
         
         '''
         if self.mode not in ["hwsim", "real", "test"]:
@@ -135,30 +136,116 @@ class QKDHandlerBob:
 
         logging.info("Measuring QBER")
         response = await asrecv(self.reader)
-        verification_ks_Bob = [key[i] for i in response['indices']]
+        verification_ks_Bob = [key[i] for i in response['verify_indices']]
         length = len(verification_ks_Bob)
         error = 0
         for a, b in zip(verification_ks_Bob, response['verification_ks_Alice']):
             if a != b:
                 error += 1
-        await assend(self.writer, error/length)
+        measured_qber = error/length
+        await assend(self.writer, measured_qber)
+        # maybe send errors (int) instead of qber (float) ??
+        # this loop seems unnecessary..
+        # shld i send the states too for alice to verify?? 
+        # (actually it's really not necessarily, Bob can always manipulate what he sends, only commitment coulddd potentially be useful)
+        if measured_qber > self.qber:
+            logging.info("QBER abnormal, aborting protocol")
+            return None
+        
+        half_key = [key[i] for i in response['rest_indices']]
+        if measured_qber == 0.0:
+            return half_key
+        
+        half_key = [key[i] for i in response['rest_indices']]
+        logging.info("Starting Error Correction")
+        # basically copy code from QOT to do the error correction
+        time1=start_time()
 
+        # read matrix
+        logging.debug("[S] load H matrix")
+        Hldpc, eccblock = read_matrix(len(half_key), measured_qber)
+        logging.info(f"[S] H shape : {Hldpc.shape}")
+        print_csr_size(Hldpc)
 
+        '''
+        if len(X0) < eccblock or len(X1) < eccblock : # Insecure case
+            
+            logging.debug(f"[S] X0: {X0[:10]}, length: {len(X0)}") 
+            logging.debug(f"[S] X1: {X1[:10]}, length: {len(X1)}") 
+            logging.error(f"[S] Not enough bits {len(X0)}, {len(X1)} for error correction block size {eccblock}. Aborting!")
+            return
+        '''
 
+        # receive Salice_x, Salice_y
+        # Error correction phase
+        logging.debug("[S] wait for syndrome")
+        Salice_key = await asrecv(self.reader)
+        alice_key = await asrecv(self.reader)
+        
+        # For info/debugging only receive Xx, Xy
+        # [Xx,Xy] = await asrecv(self.reader)
+        '''
+        logging.debug("[S] Select syndrome")
+        if self.secret_choice:
+            xbob = X1
+            Salice = Salice_y
+        else:
+            xbob = X0
+            Salice = Salice_x
+        '''
 
-        #logging.info("[S] ERROR CORRECTION")
+        logging.debug(f"[S] half_key before truncating: {half_key[:10]}, length: {len(half_key)}")
+
+        # compute LDPC syndrome
+        final_key = np.zeros(0, dtype=np.uint8)
+        half_key=half_key[:eccblock*(len(half_key)//eccblock)]
+        half_key=np.array(half_key, dtype=np.uint8)
+        logging.info(f"half_key of length {len(half_key)}")
+        
+        leak = 0 
+        for i in range(0, len(half_key), eccblock):
+            logging.debug(f"[S] decoding block {i}")
+            half_key_block = half_key[i:i+eccblock]
+            try:
+                logging.debug("[S] computes syndrome")
+                Sbob = Hldpc @ half_key_block %2
+                logging.debug(f"[S] Syndrome bob :{Sbob[:10]}, length:{len(Sbob)} ")
+                logging.debug("[S] run belief propagation")
+                Salice_block=np.array(Salice_key[0], dtype=np.uint8)
+                Sbob=np.array(Sbob, dtype=np.uint8)
+                tmp = EC_ldpc(Salice_block, Sbob, half_key_block, Hldpc, float(measured_qber), 70)
+                logging.debug("[S] BP done")
+                Salice_key.pop(0)  # remove the used syndrome
+                #logging.debug(f"[S] Decoded tmp :{tmp[:10]}, length:{len(tmp)} ")
+                final_key = np.concatenate([final_key, tmp])
+                logging.debug(f"[S] Decoded Xx_Xy: {final_key[:10]},length:{len(final_key)} ")
+                leak+=Hldpc.shape[0]
+
+            except Exception as e:
+                logging.error(f"[S] End LDPC decoding: {e}")
+                
+        logging.debug("[S] Error Correction ends")
+        time_ecc = delta_time(time1)
+
+        try:
+            left_errors = (alice_key ^ final_key).sum()
+            logging.info(f"[S] left errors after decoding : {left_errors}/{len(alice_key)}")
+        except Exception as e:
+            logging.warning(f"[S] left errors after decoding not available : {e}")
+        logging.debug(f"[S] Xx_Xy: {final_key}, length:{len(final_key)}")
+
         logging.info(f"Computed key: {key[:10]}")
-        return key
+        return final_key
 
 
 class QKDHandlerAlice:
-    def __init__(self, reader, writer, path_config, mode = "hwsim", num_qubits=100, socket_reader=None, socket_writer=None, csvpath=None):
+    def __init__(self, reader, writer, path_config, mode = "hwsim", num_qubits=100, qber = 0.08, socket_reader=None, socket_writer=None, csvpath=None):
 
         self.reader = reader
         self.writer = writer
         self.mode = mode
         self.num_qubits = num_qubits
-        #self.qber = qber
+        self.qber = qber
         self.path_config = path_config
         self.socket_reader = socket_reader
         self.socket_writer = socket_writer
@@ -193,6 +280,7 @@ class QKDHandlerAlice:
 
             
             tmptheta = reader_alice(mode=self.mode,num_qubits=self.num_qubits, path_config=self.path_config)
+            logging.info(f"num_qubits: {self.num_qubits}")
             time_to_receive=delta_time(time0)
 
             await send_stop_command(self.mode, self.path_config, self.socket_reader, self.socket_writer)
@@ -200,7 +288,6 @@ class QKDHandlerAlice:
                 return
             logging.info("Processing Qubit Information.")
             theta1, x1 = parse_angle(tmptheta, 'A')
-            print(x1)
             del tmptheta
         '''  
         if self.mode not in ["hwsim", "real", "test"]:
@@ -248,13 +335,67 @@ class QKDHandlerAlice:
         rest_index.sort()  # Sort the indices for better readability
         verify_index.sort()
         verification_ks = [key[i] for i in verify_index]
-        await assend(self.writer, {'indices': verify_index, 'verification_ks_Alice': verification_ks})
+        await assend(self.writer, {'verify_indices': verify_index, 'rest_indices': rest_index, 'verification_ks_Alice': verification_ks})
         # Note to self: both Alice and Bob don't want to lie here, whether they are honest or not
         # both want their shared key to be as accurate as possible (if not will not pass later QDS checks)
-        qber = await asrecv(self.reader)
-        print(qber)
+        measured_qber = await asrecv(self.reader)
+        print(measured_qber)
+
+        # add step to check if qber is too high, if yes abort
+        if measured_qber > self.qber:
+            logging.info("QBER abnormal, aborting protocol")
+            return None
+        
+        half_key = [key[i] for i in rest_index]
+        # Hldpc, eccblock = read_matrix(len(half_key), measured_qber)
+        if measured_qber == 0.0:
+            return half_key
+        logging.info("Starting Error Correction")
+        # basically copy code from QOT to do the error correction
+        time1=start_time()
+
+        logging.debug("[C] start syndrome computation")
+        # read matrix
+        logging.debug("[S] load matrix")
+        Hldpc, eccblock = read_matrix(len(half_key), measured_qber)
+        logging.debug("[S] matrix loaded")
+        print_csr_size(Hldpc)
+
+        if len(half_key) < eccblock: # Insecure case    
+            # Xx = Xx + [0]*(eccblock - len(Xx))
+            logging.error(f"[C] Not enough bits for error correction block size! len(Xx):{len(half_key)},eccblock:{eccblock}.")
+            return None
+
+        
+        Salice_key = []
+
+        half_key=half_key[:eccblock*(len(half_key)//eccblock)]
+        minlen = len(half_key)
+        leak=0
+        for i in range(0, minlen, eccblock):
+            block = half_key[i:i+eccblock]
+            try:
+                Salice_key.append(Hldpc @ block % 2)  # length need to fit the n of matrix
+                leak+=Hldpc.shape[0]
+
+            except Exception as e:
+                logging.debug(f"[C] left syndrome... {e}")
+
+
+        #logging.debug(f"[C] syndrome alice Sx:{Salice_x[0][:10]} ,length:{len(Salice_x)}")
+       # logging.debug(f"[C] syndrome alice Sy:{Salice_y[0][:10]} ,length:{len(Salice_y)}")
+
+        logging.debug("[C] send syndromes to Bob")
+        # send syndromes to the server
+        await assend(self.writer, Salice_key)
+        await assend(self.writer, key)
+        
+        time_ecc = delta_time(time1)
+
+
+
 
         logging.info(f"Computed key: {key[:10]}")
-        return key
+        return half_key
 
         

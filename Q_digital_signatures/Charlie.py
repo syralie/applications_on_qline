@@ -40,8 +40,10 @@ class QDSHandlerCharlie:
         if request["type"] == "QKD":
             logging.info("--- QKD with Alice ---")
             QKD_Charlie = QKDHandlerBob(reader, writer, path_config=path_config, mode="hwsim", num_qubits=request["num_qubits"])
+            self.n = request["n"]
+            self.bH = request["bH"]
             self.key = await QKD_Charlie.run_protocol()
-            print("Charlie_key", self.key)
+            print("Charlie_key", self.key[:10])
 
             writer.close()
             await writer.wait_closed()
@@ -54,20 +56,20 @@ class QDSHandlerCharlie:
             self.Bob_half = request["Bob_half"]
             self.Bob_indices = request["Bob_indices"]
             
-            self.n = request["n"]
-            self.bH = request["bH"]
+            #self.n = request["n"]
+            #self.bH = request["bH"]
 
             indices = list(range(self.n))
             random.shuffle(indices)
             print(indices)
             print(self.bH)
             Charlie_half = [self.key[i * (3 * self.bH): (i+1) * (3 * self.bH)] for i in indices[:self.n//2]]
-            print("test", Charlie_half)
+            # print("test", Charlie_half)
             await assend(writer, {"Charlie_indices": indices[:self.n//2], "Charlie_half": Charlie_half})
 
             writer.close()
             await writer.wait_closed()
-            print("Charlie_Bob", self.Bob_half)
+            #print("Charlie_Bob", self.Bob_half)
             
 
         elif request["type"] == "SIGNATURES":

@@ -31,6 +31,10 @@ EPS_SEC2 = 2**(-23)
 EPS_COR=2**(-24)
 
 
+def calculate_num_qubits(n, bH):
+    #return 3 * n * bH * 2 * 2 
+    return 3 * (n+1) * bH * 2 * 2
+
 def irreducible_polynomial(bH):
     GF = galois.GF(2)
 

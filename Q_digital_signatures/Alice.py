@@ -4,7 +4,7 @@ from async_communication import asrecv, assend
 from qkd import QKDHandlerAlice
 from start_stop import send_start_command
 import argparse
-from utils import Toeplitz, irreducible_polynomial, sign, verify
+from utils import Toeplitz, irreducible_polynomial, sign, verify, calculate_num_qubits
 import numpy as np
 
 from datetime import datetime
@@ -19,18 +19,18 @@ class QDSHandlerAlice():
         
         self.n = args.num_blocks
         self.bH = args.bH
-        self.num_qubits =  3 * self.n * self.bH * 2
+        self.num_qubits = calculate_num_qubits(self.n, self.bH)
         self.message = [int(i) for i in "1010110110"]
         self.mode = args.mode
         self.Charlie_key = None
         self.Bob_key = None
         
-    async def QKD(self, name, host, port):
+    async def run_QKD(self, name, host, port):
         socket_reader, socket_writer = await send_start_command("hwsim", path_config)
         reader, writer = await asyncio.open_connection(host, port)
         logging.info(f"[C] Connected to {host}:{port}")
 
-        await assend(writer, {"type": "QKD", "num_qubits": self.num_qubits, "mode": self.mode})
+        await assend(writer, {"type": "QKD", "num_qubits": self.num_qubits, "n": self.n, "bH": self.bH, "mode": self.mode})
         #print(num_qubits)
         QKD_Alice = QKDHandlerAlice(reader, writer, path_config=path_config, mode=self.mode, num_qubits=self.num_qubits, socket_reader=socket_reader, socket_writer=socket_writer)
         
@@ -41,6 +41,7 @@ class QDSHandlerAlice():
 
         writer.close()
         await writer.wait_closed()
+        
 
     
     
@@ -90,11 +91,20 @@ class QDSHandlerAlice():
 
         ### QKD with Charlie ###
         logging.info("--- QKD with Charlie ---")
-        await self.QKD("Charlie", Charlie_host, Charlie_port)
+        await self.run_QKD("Charlie", Charlie_host, Charlie_port)
+        if self.Charlie_key is None:
+            logging.info("Protocol Aborted.")
+            return
         
         ### QKD with Bob ###
         logging.info("--- QKD with Bob ---")
-        await self.QKD("Bob", Bob_host, Bob_port)
+        await self.run_QKD("Bob", Bob_host, Bob_port)
+        if self.Bob_key is None:
+            logging.info("Protocol Aborted.")
+            return
+        
+        print(self.Charlie_key[:10])
+        print(self.Bob_key[:10])
 
         ### Sign message and send to Bob ###
         logging.info("--- Signing message and sending to Bob ---")
@@ -118,9 +128,9 @@ if __name__ == "__main__":
                         help="Operation mode: 'hwsim', or 'real'")
     parser.add_argument("-p", "--path_config", type=str, default="config_test/sim/alice/ot.json",
                         help="Path to FIFO config file (default: config_test/sim/alice/ot.json)")
-    parser.add_argument("-n", "--num_blocks", type=int, default=10,
+    parser.add_argument("-n", "--num_blocks", type=int, default=38,
                         help="Number of blocks (default: 10)")
-    parser.add_argument("-bH", "--bH", type=int, default=10,
+    parser.add_argument("-bH", "--bH", type=int, default=35,
                         help="bH as defined in the paper (default: 10)")
     parser.add_argument("-c", "--config_network", type=str, default="config/network.json",
                         help="Path to network config file")

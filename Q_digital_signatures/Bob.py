@@ -15,9 +15,9 @@ path_config = "config_test/sim/bob/ot.json"
 
 class QDSHandlerBob():
     def __init__(self, Charlie_host, Charlie_port):
-        self.n = 10
-        self.bH = 10
-        self.key = ''
+        self.n = None
+        self.bH = None
+        self.key = None
         self.Charlie_host = Charlie_host
         self.Charlie_port = Charlie_port
         self.Charlie_half = []
@@ -27,8 +27,10 @@ class QDSHandlerBob():
 
     async def handle_QKD(self, reader, writer, request):
         QKD_Bob = QKDHandlerBob(reader, writer, path_config, mode=request["mode"], num_qubits=request["num_qubits"])
+        self.n = request["n"]
+        self.bH = request["bH"]
         self.key = await QKD_Bob.run_protocol()
-        print("Bob_key", self.key)
+        print("Bob_key", self.key[:10])
 
         writer.close()
         await writer.wait_closed()
@@ -46,8 +48,9 @@ class QDSHandlerBob():
         random.shuffle(indices)
         Bob_half = [self.key[i * (3 * self.bH): (i+1) * (3 * self.bH)] for i in indices[:self.n//2]]
 
-
-        await assend(writer, {"type": "KEY_TRANSFER", "num_qubits": request["num_qubits"], "n": self.n, "bH": self.bH, "Bob_indices": indices[:self.n//2], "Bob_half": Bob_half})
+        # would any of them want to lie about n, bH and num_qubits?
+        # honestly kinda, hence best if both hear of n and bH from alice directly.
+        await assend(writer, {"type": "KEY_TRANSFER", "Bob_indices": indices[:self.n//2], "Bob_half": Bob_half})
         response = await asrecv(reader)
 
         self.Charlie_half = response["Charlie_half"]
@@ -56,7 +59,7 @@ class QDSHandlerBob():
         writer.close()
         await writer.wait_closed()
 
-        print("Bob_Charlie", self.Charlie_half)
+        #print("Bob_Charlie", self.Charlie_half)
     
 
     def handle_verification(self, request):
